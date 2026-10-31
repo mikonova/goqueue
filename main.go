@@ -16,7 +16,7 @@ type Queue[T any] struct {
 // Creates a new queue of type T and with a max capacity of cap. Panics if capacity is 0 or less.
 // To use it like an unbuffered channel just use cap = 1
 func New[T any](cap int) *Queue[T] {
-	q := Queue[T]{}
+	q := Queue[T]{lElemPtr: -1}
 	q.cap = cap
 	if cap > 0 {
 		q.sl = make([]T, cap)
@@ -27,45 +27,57 @@ func New[T any](cap int) *Queue[T] {
 	return &q
 }
 
-// Push element into the queue
-// panics if types dont match
+// Push element into the queue (this will be the last element).
 func (q *Queue[T]) Push(element T) {
 	q.mut.Lock()
 	defer q.mut.Unlock()
-	for q.lElemPtr == q.cap {
+	for q.lElemPtr >= q.cap-1 {
 		q.cond.Wait()
 	}
-	q.sl[q.lElemPtr] = element
 	q.lElemPtr++
+	q.sl[q.lElemPtr] = element
 }
 
-func (q *Queue[T]) Pop() any {
+// Pop the last element from the queue. This also removes the last element
+func (q *Queue[T]) Pop() T {
 	q.mut.Lock()
 	defer q.mut.Unlock()
 	defer q.cond.Signal()
-	if q.lElemPtr == 0 {
-		return nil
+	if q.lElemPtr < 0 {
+		panic("[err] cannot Pop() from a zero length queue")
 	}
+	elem := q.sl[q.lElemPtr]
 	q.lElemPtr--
-	return q.sl[q.lElemPtr+1]
+	return elem
 }
 
-func (q *Queue[T]) Pull() any {
+// Pull the first element from the queue. This also removes the first element
+func (q *Queue[T]) Pull() T {
 	q.mut.Lock()
 	defer q.mut.Unlock()
 	defer q.cond.Signal()
-	if q.lElemPtr == 0 {
-		return nil
+	if q.lElemPtr < 0 {
+		panic("[err] cannot Pull() from a zero length queue")
 	}
-	a := q.sl[0]
-	for k := range len(q.sl) - 1 {
+	elem := q.sl[0]
+	for k := range len(q.sl) - 2 {
 		q.sl[k] = q.sl[k+1]
 	}
 	q.lElemPtr--
-	return a
+	return elem
 
 }
 
+// Close the queue. The queue can no longer be used and any usage will lead to a runtime panic
 func (q *Queue[T]) Close() {
 	q = nil
+}
+
+// Set the pointer to the first element and make it elem which virtually renders all values owerritable and inaccessible
+func (q *Queue[T]) Drain(elem T) {
+	q.mut.Lock()
+	defer q.mut.Unlock()
+	defer q.cond.Signal()
+	q.lElemPtr = 0
+	q.sl[q.lElemPtr] = elem
 }
