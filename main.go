@@ -31,6 +31,7 @@ func New[T any](cap int) *Queue[T] {
 func (q *Queue[T]) Push(element T) {
 	q.mut.Lock()
 	defer q.mut.Unlock()
+	defer q.cond.Signal()
 	for q.lElemPtr >= q.cap-1 {
 		q.cond.Wait()
 	}
@@ -43,8 +44,8 @@ func (q *Queue[T]) Pop() T {
 	q.mut.Lock()
 	defer q.mut.Unlock()
 	defer q.cond.Signal()
-	if q.lElemPtr < 0 {
-		panic("[err] cannot Pop() from a zero length queue")
+	for q.lElemPtr < 0 {
+		q.cond.Wait()
 	}
 	elem := q.sl[q.lElemPtr]
 	q.lElemPtr--
@@ -56,8 +57,8 @@ func (q *Queue[T]) Pull() T {
 	q.mut.Lock()
 	defer q.mut.Unlock()
 	defer q.cond.Signal()
-	if q.lElemPtr < 0 {
-		panic("[err] cannot Pull() from a zero length queue")
+	for q.lElemPtr < 0 {
+		q.cond.Wait()
 	}
 	elem := q.sl[0]
 	for k := range len(q.sl) - 2 {
