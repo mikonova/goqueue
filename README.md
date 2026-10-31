@@ -8,4 +8,4 @@ q := goqueue.New[string](100)
 ```
 Add the elements with Push() and remove them with either Pop() or Pull()
 Also, clear the whole queue with Drain(elem int)
-The queue blocks the goroutine if a capacity is reached and waits for something to drain at least one element.
+The queue blocks the gorogoutine if a capacity is reached and waits for something to drain at least one element.
