@@ -74,11 +74,15 @@ func (q *Queue[T]) Close() {
 	q = nil
 }
 
-// Set the pointer to the first element and make it elem which virtually renders all values owerritable and inaccessible
-func (q *Queue[T]) Drain(elem T) {
+// Drain all the elements into a slice and start filling the queue from the end
+func (q *Queue[T]) Drain() []T {
 	q.mut.Lock()
 	defer q.mut.Unlock()
 	defer q.cond.Signal()
-	q.lElemPtr = 0
-	q.sl[q.lElemPtr] = elem
+	buf := make([]T, 0, len(q.sl))
+	for ; q.lElemPtr > -1; q.lElemPtr-- {
+		buf = append(buf, q.sl[q.lElemPtr])
+
+	}
+	return buf
 }
