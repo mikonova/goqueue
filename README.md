@@ -2,7 +2,7 @@
 ### An implementation of flexible lifo/fifo queues, an alternative to channels.
 All queues are safe for concurrent usage.
 
-#### Example: creting a new channel
+#### Example: creating a new channel
 ```go
 q := goqueue.New[string](100)
 ```
